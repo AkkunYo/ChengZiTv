@@ -3,6 +3,7 @@ package com.github.tvbox.osc.ui.fragment;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -13,12 +14,14 @@ import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.DiffUtil;
 
+import com.github.tvbox.osc.BuildConfig;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.BaseActivity;
 import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.bean.SourceBean;
+import com.github.tvbox.osc.bean.VersionData;
 import com.github.tvbox.osc.ui.activity.SettingActivity;
 import com.github.tvbox.osc.ui.adapter.ApiHistoryDialogAdapter;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
@@ -36,8 +39,12 @@ import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HistoryHelper;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
+import com.google.gson.Gson;
+import com.king.app.updater.AppUpdater;
+import com.king.app.updater.UpdateConfig;
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.callback.FileCallback;
+import com.lzy.okgo.callback.StringCallback;
 import com.lzy.okgo.model.Progress;
 import com.lzy.okgo.model.Response;
 import com.orhanobut.hawk.Hawk;
@@ -839,7 +846,15 @@ public class ModelSettingFragment extends BaseLazyFragment {
                 dialog.show();
             }
         });
-		
+
+        findViewById(R.id.llAbout).setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                checkVersion();
+                return true;
+            }
+        });
+
 		findViewById(R.id.llHomeLive).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -856,6 +871,43 @@ public class ModelSettingFragment extends BaseLazyFragment {
             }
         };
 
+    }
+
+    boolean hasCheckVersion = false;
+    public void checkVersion( ) {
+        if (hasCheckVersion) return;
+        hasCheckVersion = true;
+        System.out.println("--zkyml>>检查版本升级");
+        OkGo.<String>get("https://api.github.com/repos/AkkunYo/ChengZiTv/releases/latest")
+                .execute(new StringCallback() {
+                    @Override
+                    public void onFinish() {
+                        super.onFinish();
+                        hasCheckVersion = false;
+                    }
+
+                    @Override
+                    public void onSuccess(Response<String> response) {
+                        hasCheckVersion = false;
+                        String body = response.body();
+                        if (!TextUtils.isEmpty(body)) {
+                            VersionData versionData = new Gson().fromJson(body, VersionData.class);
+                            System.out.println(String.format("--zkyml>>服务器版本:%d，本地版本：%d", versionData.getVersionCode(), BuildConfig.VERSION_CODE));
+                            if (versionData.getVersionCode() > BuildConfig.VERSION_CODE) {
+                                if (versionData.getMode() < 2) {
+                                    //一句代码，傻瓜式更新
+                                    UpdateConfig updateConfig = new UpdateConfig();
+                                    updateConfig.setUrl(versionData.getDownloadUrl());
+                                    updateConfig.setVersionCode(versionData.getVersionCode());
+                                    new AppUpdater(getContext(), updateConfig).start();
+                                    return;
+                                }
+                            } else {
+                                Toast.makeText(getContext(), "当前已经是最新版本了", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                });
     }
 
     @Override
