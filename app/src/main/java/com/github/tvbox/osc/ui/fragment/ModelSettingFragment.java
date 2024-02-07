@@ -56,6 +56,14 @@ import me.jessyan.autosize.utils.AutoSizeUtils;
 import okhttp3.HttpUrl;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 
+import com.lzy.okgo.callback.StringCallback;
+import com.google.gson.Gson;
+import com.king.app.updater.AppUpdater;
+import com.king.app.updater.UpdateConfig;
+import com.github.tvbox.osc.bean.VersionData;
+import android.text.TextUtils;
+import com.github.tvbox.osc.BuildConfig;
+
 /**
  * @author pj567
  * @date :2020/12/23
@@ -802,6 +810,14 @@ public class ModelSettingFragment extends BaseLazyFragment {
             }
         });
 
+        findViewById(R.id.llAbout).setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                checkVersion();
+                return true;
+            }
+        });
+
         findViewById(R.id.llHomeLive).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -818,6 +834,42 @@ public class ModelSettingFragment extends BaseLazyFragment {
             }
         };
 
+    }
+
+    boolean hasCheckVersion = false;
+    public void checkVersion( ) {
+        if (hasCheckVersion) return;
+        hasCheckVersion = true;
+        System.out.println("--zkyml>>检查版本升级");
+        OkGo.<String>get("https://api.github.com/repos/AkkunYo/ChengZiTv/releases/latest")
+                .execute(new StringCallback() {
+                    @Override
+                    public void onFinish() {
+                        super.onFinish();
+                        hasCheckVersion = false;
+                    }
+
+                    @Override
+                    public void onSuccess(Response<String> response) {
+                        hasCheckVersion = false;
+                        String body = response.body();
+                        if (!TextUtils.isEmpty(body)) {
+                            VersionData versionData = new Gson().fromJson(body, VersionData.class);
+                            System.out.println(String.format("--zkyml>>服务器版本:%d，本地版本：%d", versionData.getVersionCode(), BuildConfig.VERSION_CODE));
+                            if (versionData.getVersionCode() > BuildConfig.VERSION_CODE) {
+                                if (versionData.getMode() < 2) {
+                                    //一句代码，傻瓜式更新
+                                    UpdateConfig updateConfig = new UpdateConfig();
+                                    updateConfig.setUrl(versionData.getDownloadUrl());
+                                    updateConfig.setVersionCode(versionData.getVersionCode());
+                                    new AppUpdater(getContext(), updateConfig).start();
+                                }
+                            } else {
+                                Toast.makeText(getContext(), "当前已经是最新版本了", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                });
     }
 
     @Override
