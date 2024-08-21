@@ -129,6 +129,18 @@
 -dontwarn android.view.**
 -dontwarn android.media.**
 -dontwarn org.chromium.**
+#updater
+-dontwarn com.king.app.updater.**
+-keep class com.king.app.updater.**{ *;}
+-keep class * extends com.king.app.updater.**{ *;}
+-keep class * implements com.king.app.updater.**{ *;}
+-keepattributes InnerClasses
+
+-keep public class * extends android.app.Service
+
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
 #okhttp
 -dontwarn okhttp3.**
 -keep class okhttp3.**{*;}
