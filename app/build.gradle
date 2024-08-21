@@ -15,6 +15,8 @@ android {
         targetSdkVersion 28
         versionCode 1
         versionName "1.0.".concat(buildTime())
+        buildConfigField("String", "PACK_TIME", "\"${buildTime()}\"")
+        buildConfigField("String", "INJECT_VERSION_CODE", "\"${VERSION_CODE_PARA}\"")
         multiDexEnabled true
         //设置room的Schema的位置
         javaCompileOptions {
@@ -38,12 +40,18 @@ android {
     flavorDimensions += ["abi", "brand", "mode"]
     productFlavors {
         armeabi {
+            applicationId 'com.zkyml.tvboxosc'
+            versionCode 10202
+
             dimension = "abi"
             ndk {
                 abiFilters 'armeabi-v7a'
             }
         }
         arm64 {
+            applicationId 'com.zkyml.tvboxosc'
+            versionCode 10202
+
             dimension = "abi"
             ndk {
                 abiFilters 'arm64-v8a'
@@ -125,7 +133,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.12.0'
     implementation project(path: ':quickjs')
     pythonImplementation project(":pyramid")
-    
+
     kapt 'androidx.room:room-compiler:2.6.1'
     implementation 'com.github.alidili:FlowLayout:v1.5'
     implementation 'androidx.room:room-runtime:2.6.1'
@@ -163,6 +171,11 @@ dependencies {
 
     implementation 'com.lzy.net:okgo:3.0.4'
     implementation 'com.owen:tv-recyclerview:3.0.0'
+
+    implementation 'me.ele:lancet-base:1.0.7'
+    //app-updater
+    implementation 'com.github.jenly1314.AppUpdater:app-updater:1.2.0'
+
     implementation 'com.blankj:utilcodex:1.31.0'
     implementation 'com.github.getActivity:XXPermissions:18.5'
     implementation 'org.jsoup:jsoup:1.16.1'
@@ -188,3 +201,5 @@ dependencies {
         }
     }
 }
+
+apply plugin: 'me.ele.lancet'

@@ -1,0 +1,86 @@
+name: ChengZiTV Build
+
+on:
+    push:
+      branches:
+        - main
+    schedule:
+      - cron: "0 0 */2 * *"
+#    workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Delete workflow runs
+        uses: GitRML/delete-workflow-runs@main
+        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          repository: ${{ github.repository }}
+          retain_days: 30
+          keep_minimum_runs: 5
+
+      - name: Check Code
+        uses: http://gitea:3000/actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Up JDK 17
+        uses: http://gitea:3000/actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'zulu'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: http://gitea:3000/actions/setup-android@v3
+        with:
+          packages: 'tools platform-tools build-tools;30.0.3 platforms;android-34'
+
+      - name: Build APK
+        run: |
+          sed -i 's#services.gradle.org/distributions#mirrors.cloud.tencent.com/gradle#g' ${{ gitea.workspace }}/gradle/wrapper/gradle-wrapper.properties
+          cd ${{ gitea.workspace }}
+          chmod +x  ./gradlew
+          ./gradlew assembleArm64GenericNormalRelease -PVERSION_CODE_PARA=${{ github.run_number }} --build-cache --parallel --daemon --warning-mode all
+
+#      - name: Sign the release APK
+#        uses: r0adkll/sign-android-release@v1
+#        id: sign_app
+#        with:
+#          releaseDirectory: app/build/outputs/apk/release/
+#          signingKeyBase64: ${{ secrets.SIGNING_KEY_BASE64 }}
+#          alias: ${{ secrets.ALIAS }}
+#          keyStorePassword: ${{ secrets.KEYPWD }}
+#          keyPassword: ${{ secrets.KEYPWD }}
+#        env:
+#          BUILD_TOOLS_VERSION: "30.0.3"
+
+#      - name: Prepare App
+#        run: |
+#          mkdir -p ${{ github.workspace }}/apk/
+#          mv ${{steps.sign_app.outputs.signedReleaseFile}} ${{ github.workspace }}/apk/ChengZiTv-v${{ github.run_number }}.apk
+
+      - name: Get Version
+        id: version
+        run: |
+          echo "VERSION=$(grep 'versionName' app/build.gradle | awk -F\" '{print $2}')" >> $GITHUB_OUTPUT
+
+      - name: Get current date
+        id: date
+        run: |
+          echo "current-date=$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+
+      - name: Upload Release Asset
+        uses: http://gitea:3000/actions/gitea-release-action@v1
+        with:
+          #          tag_name: "${{ github.ref_name }}_${{ steps.version.outputs.VERSION }}"
+          name: "Version ${{ steps.version.outputs.VERSION }} 🚀"
+          draft: false
+          prerelease: true
+          files: |-
+            app/build/outputs/**/*.apk
+          body: |
+            ### 版本信息
+            - 构建时间: ${{ steps.date.outputs.current-date }}
+            - 提交信息: ${{ github.event.head_commit.message }}
