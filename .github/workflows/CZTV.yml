@@ -1,0 +1,89 @@
+name: ChengZiTV Build
+
+on:
+    push:
+      branches:
+        - main
+#    schedule:
+#      - cron: "0 0 */2 * *"
+#    workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete workflow runs
+        uses: GitRML/delete-workflow-runs@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 10
+
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+#      - name: Sync upstream changes
+#        id: sync
+#        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
+#        with:
+#          upstream_sync_repo: takagen99/Box
+#          upstream_sync_branch: main
+#          target_sync_branch: main
+#          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+#          test_mode: false
+#
+#      - name: Sync check
+#        if: failure()
+#        run: |
+#          echo "[Error] 由于上游仓库的 workflow 文件变更，导致 GitHub 自动暂停了本次自动更新，你需要手动 Sync Fork 一次"
+#          echo "[Error] Due to a change in the workflow file of the upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork. "
+#          exit 1
+
+      - name: set up JDK 17
+#        if: steps.sync.outputs.has_new_commits == 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'zulu'
+      - name: Cache Gradle dependencies
+        #if: steps.sync.outputs.has_new_commits == 'true'
+        id: cache-gradle-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Build With Gradle
+        #if: steps.sync.outputs.has_new_commits == 'true'
+        run: |
+          echo "sdk.dir=/root/.android/sdk" > local.properties
+          chmod +x gradlew
+          ./gradlew assembleArm64GenericNormalRelease -PVERSION_CODE_PARA=${{ github.run_number }} --build-cache --parallel --daemon --warning-mode all
+      - name: Sign the release APK
+        #if: steps.sync.outputs.has_new_commits == 'true'
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/arm64GenericNormal/release/
+          signingKeyBase64: ${{ secrets.SIGNING_KEY_BASE64 }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEYPWD }}
+          keyPassword: ${{ secrets.KEYPWD }}
+        env:
+          BUILD_TOOLS_VERSION: "30.0.3"
+      - name: Prepare App
+        #if: steps.sync.outputs.has_new_commits == 'true'
+        run: |
+          mkdir -p ${{ github.workspace }}/apk/
+          mv ${{steps.sign_app.outputs.signedReleaseFile}} ${{ github.workspace }}/apk/ChengZiTv-v${{ github.run_number }}.apk
+      - name: Upload App To Artifact Release
+        #if: steps.sync.outputs.has_new_commits == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}
+          files: ${{ github.workspace }}/apk/*
+          generate_release_notes: true
