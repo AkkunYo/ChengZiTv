@@ -10,10 +10,12 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.github.tvbox.osc.tk'
+        applicationId 'com.zkyml.tvboxosc'
         minSdkVersion 21
         targetSdkVersion 28
-        versionCode 1
+        versionCode 10202
+        buildConfigField("String", "PACK_TIME", "\"${buildTime()}\"")
+        buildConfigField("String", "INJECT_VERSION_CODE", "\"${VERSION_CODE_PARA}\"")
         versionName "1.0.".concat(buildTime())
         multiDexEnabled true
         //设置room的Schema的位置
@@ -32,41 +34,9 @@ android {
         release {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             minifyEnabled true
-
-        }
-    }
-    flavorDimensions +=[ "abi","brand" ]
-    productFlavors {
-        armeabi {
-            dimension = "abi"
             ndk {
-                abiFilters 'armeabi-v7a'
+                abiFilters "armeabi-v7a", "arm64-v8a"
             }
-        }
-        arm64 {
-            dimension = "abi"
-            ndk {
-                abiFilters 'arm64-v8a'
-            }
-        }
-
-        generic  {
-            //通用版本
-            dimension = "brand"
-        }
-
-        hisense {
-            //海信的
-            applicationId 'com.github.hisense.osc.tk'
-            dimension = "brand"
-        }
-    }
-    applicationVariants.configureEach { variant ->
-        variant.outputs.configureEach { output ->
-            def flavorNames = variant.productFlavors.collect { it.name }.join('-')
-            // 构建自定义文件名
-            def fileName = "TVBox_${variant.buildType.name}-${flavorNames}.apk"
-            outputFileName = fileName
         }
     }
 
@@ -153,6 +123,11 @@ dependencies {
 
     implementation 'com.lzy.net:okgo:3.0.4'
     implementation 'com.owen:tv-recyclerview:3.0.0'
+
+    implementation 'me.ele:lancet-base:1.0.7'
+    //app-updater
+    implementation 'com.github.jenly1314.AppUpdater:app-updater:1.2.0'
+
     implementation 'com.blankj:utilcodex:1.31.0'
     implementation 'com.github.getActivity:XXPermissions:18.5'
     implementation 'org.jsoup:jsoup:1.16.1'
@@ -170,3 +145,5 @@ dependencies {
         }
     }
 }
+
+apply plugin: 'me.ele.lancet'
